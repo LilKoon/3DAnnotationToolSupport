@@ -1,0 +1,31 @@
+All 6 axis permutations: orthogonal axes, signed directions and gizmo movement verified.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/axis-order.test.cjs (31.769042ms)
+Cuboid editing: full rotation, four corners and fixed opposite corners passed.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/cuboid-edit.test.cjs (30.29775ms)
+Ground lifecycle: same frame after detect, new frame reset, lazy scan, mode preservation and pending raw choice passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/ground-lifecycle-v4.test.cjs (29.980167ms)
+Ground side isolation: outside footprint, both directions, local slope and xray passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/ground-side-v4.test.cjs (28.884125ms)
+Image label aliases preserve LiDAR mapping
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/image-label-v4.test.cjs (31.51875ms)
+Navigation: pan and XYZ drag match projected movement across camera angles.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/navigation.test.cjs (32.643375ms)
+Projection focus: oriented crop, viewport fit and silhouette passed.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/projection-focus.test.cjs (28.727167ms)
+Publish client: session binding, login checks and validation error display passed.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/publish-client.test.cjs (29.340875ms)
+Scene: raw/dim/hide/unknown/ROI/range passed
+Height filtering passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/scene-v4.test.cjs (28.821167ms)
+Session saves: snapshots, coalescing and revision isolation passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/session-save-v4.test.cjs (28.652667ms)
+Solid ground: depth occlusion, xray, camera lock, bounded hole fill, reference floor and picking passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/solid-ground-v4.test.cjs (27.747208ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41.319667

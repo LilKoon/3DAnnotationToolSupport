@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CVAT Auto Annotation V4 · 3D</title>
+  <link rel="stylesheet" href="/static/style.css?v=3.13-simple-detect">
+  <style>#gpu-settings a { color: #8ee3d0; } #label-coverage { overflow-wrap: anywhere; }</style>
+  <link rel="stylesheet" href="/static/v4.css">
+  <link rel="stylesheet" href="/static/workspace-layout-v4.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">C</span><div><strong>CVAT Auto Annotation</strong><small>V4 · Ground + Camera Assist</small></div></div>
+    <div class="top-actions">
+      <span id="save-state" role="status">Chưa mở phiên</span>
+      <label class="file-button secondary" style="margin-right: 8px;">Nhập Backup<input id="file-import" type="file" accept=".json" hidden></label>
+      <button id="btn-export" disabled>Xuất JSON</button>
+      <button id="btn-publish" disabled>Publish lên CVAT</button>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="left-panel">
+      <section class="card">
+        <h2>Dữ liệu 3D</h2>
+        <p>Mở file PCD/BIN hoặc một frame từ CVAT 3D job.</p>
+        <label class="file-button">Mở PCD/BIN<input id="file" type="file" accept=".pcd,.bin" hidden></label>
+        <button id="btn-demo">Mở demo 3D</button>
+        <details><summary>Kết nối CVAT job</summary>
+          <label>URL<input id="cvat-url" type="url" placeholder="https://cvat.example.com"></label>
+          <label>Tài khoản<input id="cvat-user" autocomplete="username"></label>
+          <label>Mật khẩu<input id="cvat-pass" type="password" autocomplete="current-password"></label>
+          <label>Job ID<input id="cvat-job" type="number" min="1"></label>
+          <button id="btn-frames">Đọc frame</button>
+          <label>Frame<select id="cvat-frame"></select></label>
+          <button id="btn-import">Mở frame</button>
+        </details>
+      </section>
+      <section class="card"><details><summary>Quy ước trục của bài</summary><label>Trục mặc định cho box mới<select id="session-axis-order"></select></label><div class="triple"><label>Chiều X<select id="session-sign-x"><option value="1">+</option><option value="-1">−</option></select></label><label>Chiều Y<select id="session-sign-y"><option value="1">+</option><option value="-1">−</option></select></label><label>Chiều Z<select id="session-sign-z"><option value="1">+</option><option value="-1">−</option></select></label></div><button id="btn-session-axes" disabled>Lưu cho box mới</button><button id="btn-apply-axes" disabled>Áp dụng cho mọi box hiện có</button><p class="hint">Đặt tên trục vật thể theo bài. Dài/rộng/cao là ba cạnh của cuboid; tọa độ LiDAR không bị đổi.</p></details></section>
+      <section class="card">
+        <h2>Auto detect</h2>
+        <p id="auto-summary" class="hint" role="status">Mở bài để tự nhận cấu hình nhãn.</p>
+        <label>Chế độ gợi ý<select id="detect-profile"><option value="precise">Ít box sai</option><option value="balanced" selected>Cân bằng</option><option value="recall">Tìm thêm vật thể</option><option value="custom">Tuỳ chỉnh trong Nâng cao</option></select></label>
+        <p id="profile-hint" class="hint">Các chế độ điều chỉnh ngưỡng; vẫn cần kiểm tra box.</p>
+        <label>Kết quả mới<select id="detect-mode"><option value="replace">Ghi đè toàn bộ object</option><option value="append">Thêm vào bài hiện tại</option></select></label>
+        <button id="btn-detect" disabled>Auto detect</button>
+        <p id="detect-summary" class="hint" role="status" aria-live="polite"></p>
+        <details id="detect-advanced"><summary>Nâng cao · model, nhãn và ngưỡng</summary>
+          <label>Model<select id="model"><option>Đang kiểm tra…</option></select></label>
+          <label>Ngưỡng confidence<input id="threshold" type="number" min="0" max="1" step="0.05" value="0.3"></label>
+          <p class="hint">Truck/bus và các lớp khác chỉ gộp theo hướng dẫn bài. Ánh xạ được nhớ theo job trên trình duyệt.</p>
+          <div id="label-mapping" hidden></div><div id="label-coverage" class="hint" role="status"></div>
+          <button id="btn-guideline" class="secondary" hidden>Dùng 10 nhãn DOCX cho phiên này</button>
+          <div id="detection-report" class="hint" role="status"></div><p id="model-help" class="hint"></p>
+        </details>
+        <details id="evaluation-panel"><summary>Đánh giá trên frame đã gắn đúng</summary>
+          <p class="hint">Chọn 1–20 frame cùng bài; nên có 10–20 frame đa dạng. Chỉ box đã chấp nhận được dùng làm đáp án chuẩn.</p>
+          <button id="btn-evaluation-frames">Tìm frame đã duyệt</button><div id="evaluation-frames"></div>
+          <label><input id="evaluation-complete" type="checkbox"> Tôi đã gắn đủ vật thể và kiểm tra các box chấp nhận trong những frame chọn.</label>
+          <button id="btn-evaluate">So sánh hai model</button><p id="evaluation-status" class="hint" role="status" aria-live="polite"></p>
+          <div id="evaluation-results"></div><button id="btn-apply-recommendation" hidden>Dùng cấu hình đề xuất</button>
+          <details><summary>Kiểm tra đầu vào</summary><button id="btn-input-check">Kiểm tra dữ liệu LiDAR</button><p id="input-diagnostics" class="hint"></p></details>
+        </details>
+        <details id="gpu-settings"><summary>Cấu hình model / GPU Mac</summary>
+          <p class="hint">Chọn Mac Metal/MPS để chạy hai model trực tiếp trên Mac. Mạng chạy bằng GPU Apple; tạo pillar và lọc box chạy trên CPU. Dữ liệu được xử lý trên máy.</p>
+          <label>Nơi chạy<select id="gpu-mode"><option value="mac">Mac · GPU Apple Metal/MPS</option><option value="remote">Máy GPU / Google Colab</option><option value="local">CUDA trên máy đang chạy V3</option></select></label>
+          <label>URL GPU worker<input id="gpu-url" type="url" placeholder="https://…trycloudflare.com" autocomplete="off"></label>
+          <label>Token worker<input id="gpu-token" type="password" autocomplete="off" placeholder="Dán token từ notebook / server GPU"></label>
+          <label>Hệ số intensity<input id="gpu-intensity" type="number" min="0.001" max="1000" step="0.01" value="1"></label>
+          <p class="hint">Giữ 1 để dùng intensity gốc. Chỉ thay đổi khi biết dữ liệu đã được chuẩn hóa khác nuScenes. Đơn vị tọa độ: mét, Z hướng lên.</p>
+          <button id="btn-gpu-save">Lưu và kiểm tra model</button>
+          <p id="gpu-status" class="hint" role="status">Đang kiểm tra model</p>
+          <p class="hint">Mac: checkpoint được giữ trong mac_models/checkpoints. Máy mới chạy ./setup_mac.sh một lần, sau đó ./run.sh. Mỗi frame chạy riêng; box là đề xuất cần kiểm tra.</p>
+          <p><a href="/api/detector/colab" download>Tải notebook Colab GPU</a> · <a href="/api/detector/bundle" download>Tải worker cho Linux NVIDIA</a></p>
+          <p class="hint">Colab: chọn runtime GPU, chạy notebook, dán URL và token ở ô trên. Notebook tự tải checkpoint của cả hai model.</p>
+        </details>
+      </section>
+      <section class="card object-card"><div class="section-row"><h2>Objects <span id="count">0</span></h2><button id="btn-add" disabled>+ Box</button></div><div id="objects" class="objects"></div><details><summary>Box đã xoá <span id="deleted-count">0</span></summary><div id="deleted-objects" class="objects"></div></details></section>
+    </aside>
+    <section class="workspace" aria-label="Không gian gắn nhãn 3D">
+      <div class="canvas-head"><div><strong id="session-title">Chưa mở point cloud</strong><span id="point-count">—</span></div><div class="view-actions"><button id="btn-reset-view">Toàn cảnh</button></div></div>
+      <div class="navigation-toolbar" role="group" aria-label="Điều khiển 3D"><button data-mode="orbit" aria-pressed="true">Xoay 3D</button><button data-mode="pan" aria-pressed="false">Dịch góc nhìn</button><button data-mode="edit" aria-pressed="false">Kéo box XYZ</button><button data-mode="add" aria-pressed="false">Đặt box tại điểm</button><button id="btn-focus-box" disabled>Lấy tâm box</button><button id="btn-zoom-in" aria-label="Phóng to 3D">+</button><button id="btn-zoom-out" aria-label="Thu nhỏ 3D">−</button></div>
+      <div class="navigation-toolbar point-size-toolbar"><span>Cỡ điểm LiDAR <output id="point-size-value" aria-live="polite">1,5 px</output></span><div class="point-size-levels" role="group" aria-label="Mức cỡ điểm LiDAR"><button type="button" data-point-size="0.5" aria-pressed="false">0,5 px</button><button type="button" data-point-size="1" aria-pressed="false">1 px</button><button type="button" data-point-size="1.5" aria-pressed="false">1,5 px</button><button type="button" data-point-size="2" aria-pressed="false">2 px</button><button type="button" data-point-size="3" aria-pressed="false">3 px</button><button type="button" data-point-size="4" aria-pressed="false">4 px</button><button type="button" data-point-size="6" aria-pressed="false">6 px</button></div><button id="point-size-reset" type="button">Mặc định</button><label>Màu điểm <select id="point-color-mode"><option value="source">RGB gốc từ PCD</option><option value="uniform">Một màu sáng</option></select></label><span id="point-color-hint" class="hint"></span></div>
+      <p class="navigation-help" id="navigation-help">Kéo: xoay, kể cả trên box · Shift+kéo hoặc chuột phải: dịch · Cuộn/pinch: zoom · Double-click điểm: lấy tâm</p>
+      <canvas id="view-3d" tabindex="0" aria-label="Điểm LiDAR và cuboid trong góc nhìn 3D"></canvas>
+      <div class="projection-options"><label><input type="checkbox" id="projection-focus" checked> Tập trung box đang chọn</label><span id="projection-hint">Chọn box để xem chi tiết</span></div>
+      <div class="projection-grid"><div class="projection"><h3>Top · X/Y <small>Kéo: di chuyển / chỉnh kích thước / xoay</small></h3><canvas id="view-top"></canvas></div><div class="projection"><h3>Front · X/Z <small>Kéo: di chuyển / chiều cao</small></h3><canvas id="view-front"></canvas></div><div class="projection"><h3>Side · Y/Z <small>Kéo: di chuyển / chiều cao</small></h3><canvas id="view-side"></canvas></div></div>
+      <p class="legend"><span class="axis-x">X đỏ</span> · <span class="axis-y">Y xanh lá</span> · <span class="axis-z">Z xanh dương</span> · Trục trên box theo quy ước đã chọn; trục góc màn hình là LiDAR</p>
+    </section>
+    <aside class="right-panel">
+      <section class="card review-card" aria-label="Duyệt annotation">
+        <h2>Duyệt annotation</h2>
+        <p id="review-summary" aria-live="polite">Chưa mở phiên.</p>
+        <button id="btn-accept-all" disabled>Chấp nhận tất cả đang chờ</button>
+        <p id="review-selected">Chọn box để duyệt.</p>
+        <span id="review-status" class="review-badge" role="status">Chưa chọn box</span>
+        <div class="review-controls"><button id="btn-accept" disabled>Chấp nhận</button><button id="btn-reject" disabled>Từ chối</button></div>
+        <button id="btn-pending" class="secondary" disabled>Đưa về chờ duyệt</button>
+        <button id="btn-delete-box" class="danger" disabled>Xoá box đang chọn</button>
+      </section>
+      <section class="card"><h2>Chỉnh cuboid</h2><p id="empty-selection" class="hint">Chọn một box trong canvas hoặc danh sách.</p><div id="editor" hidden>
+        <label>Nhãn<select id="edit-label"></select></label>
+        <div class="triple"><label>X<input id="center-x" type="number" step="0.01"></label><label>Y<input id="center-y" type="number" step="0.01"></label><label>Z<input id="center-z" type="number" step="0.01"></label></div>
+        <div class="triple"><label>Dài X<input id="size-x" type="number" min="0.01" step="0.01"></label><label>Rộng Y<input id="size-y" type="number" min="0.01" step="0.01"></label><label>Cao Z<input id="size-z" type="number" min="0.01" step="0.01"></label></div>
+        <label>Yaw (độ)<input id="yaw" type="number" step="1"></label>
+        <div class="triple"><label>Pitch (độ)<input id="pitch" type="number" step="1"></label><label>Roll (độ)<input id="roll" type="number" step="1"></label></div>
+        <div class="axis-controls"><strong>Quy ước trục trên box</strong><label>Hoán đổi X/Y/Z<select id="box-axis-order"></select></label><div><button data-swap="0,1">X↔Y</button><button data-swap="0,2">X↔Z</button><button data-swap="1,2">Y↔Z</button></div><div><button data-flip="0" class="axis-x">Đảo X</button><button data-flip="1" class="axis-y">Đảo Y</button><button data-flip="2" class="axis-z">Đảo Z</button></div><small id="axis-values">X+ · Y+ · Z+</small><p class="hint">Đổi trục vật thể giữ nguyên geometry box. Các số đo phía trên là tọa độ và kích thước của cuboid trong LiDAR.</p></div>
+        <p id="axis-publish-hint" class="hint" role="status">Trục được chuyển thành góc xoay và kích thước khi publish sang CVAT.</p>
+      </div></section>
+      <section class="card"><h2>Ảnh camera tham chiếu</h2><p class="hint">Có thể xem ảnh đồng bộ. Muốn vẽ box chính xác lên ảnh cần calibration LiDAR↔camera.</p><label class="file-button secondary">Mở ảnh camera<input id="camera-files" type="file" accept="image/*" multiple hidden></label>
+      <details style="margin-top:12px;border-top:1px solid #2e4456;padding-top:10px;">
+        <summary>Gán góc Camera (Sensor Topology)</summary>
+        <p class="hint">Khai báo góc nhìn của từng ảnh để hỗ trợ đối chiếu bằng FOV khi thiếu file calibration.</p>
+        <div class="topology-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;position:relative;margin-top:12px;">
+           <label>Trước Trái<select id="cam-fl"><option value="">-- Trống --</option></select></label>
+           <label>Trước<select id="cam-f"><option value="">-- Trống --</option></select></label>
+           <label>Trước Phải<select id="cam-fr"><option value="">-- Trống --</option></select></label>
+           <label>Sau Trái<select id="cam-bl"><option value="">-- Trống --</option></select></label>
+           <label>Sau<select id="cam-b"><option value="">-- Trống --</option></select></label>
+           <label>Sau Phải<select id="cam-br"><option value="">-- Trống --</option></select></label>
+        </div>
+      </details>
+      <div id="camera-list" class="camera-list"></div></section>
+      <p id="message" role="status" class="message"></p>
+    </aside>
+  </main>
+  <script src="/static/label-mapping.js?v=3.10-job-labels"></script>
+  <script src="/static/detector-ui.js?v=3.13-simple-detect"></script>
+  <script src="/static/cuboid-edit.js?v=3.8-rotation"></script>
+  <script src="/static/navigation.js?v=3.8-rotation"></script>
+  <script src="/static/cvat-client.js?v=3.5-publish"></script>
+  <script src="/static/projection-focus.js?v=3.8-rotation"></script>
+  <script src="/static/scene-v4.js"></script>
+  <script src="/static/app.js?v=3.13-simple-detect"></script>
+  <script src="/static/assist-v4.js"></script>
+</body>
+</html>

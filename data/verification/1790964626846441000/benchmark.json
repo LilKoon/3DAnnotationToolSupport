@@ -1,0 +1,49 @@
+{
+  "machine": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "python": "3.13.15",
+  "pointclouds": [
+    {
+      "source": "018f40c666d24cc8be4734ab98e02d8d.npy",
+      "points": 298752,
+      "ground_ms": 360.55,
+      "surface_ms": 8.5,
+      "ground_points": 113872,
+      "unknown_points": 132965,
+      "triangles": 1424,
+      "surface_truncated": false
+    },
+    {
+      "source": "04b5a29e6d2143a98206ea4612c18dbb.npy",
+      "points": 298500,
+      "ground_ms": 342.88,
+      "surface_ms": 8.99,
+      "ground_points": 104010,
+      "unknown_points": 116417,
+      "triangles": 1384,
+      "surface_truncated": false
+    },
+    {
+      "source": "120ed55ae8d54a859d4014967ad5cd06.npy",
+      "points": 299322,
+      "ground_ms": 349.38,
+      "surface_ms": 8.43,
+      "ground_points": 104811,
+      "unknown_points": 119908,
+      "triangles": 1368,
+      "surface_truncated": false
+    }
+  ],
+  "image_smoke": {
+    "fixture": "local Ultralytics bus.jpg",
+    "model": "YOLO11n",
+    "detections": 5,
+    "classes": [
+      "bus",
+      "person"
+    ],
+    "elapsed_ms": 1156.33,
+    "checkpoint_sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1"
+  },
+  "peak_process_rss_bytes": 458342400,
+  "accuracy_claim": "No ground-truth calibration or held-out annotation supplied; counts are not accuracy metrics."
+}

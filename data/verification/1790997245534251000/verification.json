@@ -1,0 +1,18 @@
+{
+  "steps": [
+    {
+      "name": "python_tests",
+      "exit_code": 0,
+      "log": "/Users/lilkoon/code/Project/cvat-auto-segmentation/v4/data/verification/1790997245534251000/python_tests.log"
+    },
+    {
+      "name": "javascript_tests",
+      "exit_code": 0,
+      "log": "/Users/lilkoon/code/Project/cvat-auto-segmentation/v4/data/verification/1790997245534251000/javascript_tests.log"
+    }
+  ],
+  "syntax_files": 79,
+  "v3_source_files_verified": 49,
+  "v3_changes": [],
+  "deletions": 0
+}

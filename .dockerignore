@@ -1,0 +1,7 @@
+data
+__pycache__
+**/__pycache__
+tests
+static
+gpu_worker/checkpoints
+gpu_worker/dependencies

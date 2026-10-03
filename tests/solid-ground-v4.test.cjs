@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');const m=require('../static/solid-ground-math-v4.js');
+const flat={cell_size:2,cells:[[0,0,0,0,0],[1,0,0,0,0]],surface:[[[0,0,0],[2,0,0],[2,2,0]],[[0,0,0],[2,2,0],[0,2,0]]]};
+assert.equal(m.height(flat,[1,1,7]),0);assert.equal(m.height(flat,[20,20,7]),null);
+assert.equal(m.clampElevation(-1,false),.06);assert.equal(m.clampElevation(-1,true),-1);
+const projected=[[{x:0,y:0,depth:2},{x:10,y:0,depth:2},{x:0,y:10,depth:2}]];
+assert.equal(m.surfaceDepth(projected,{x:2,y:2}),2);assert.equal(m.surfaceDepth(projected,{x:20,y:20}),Infinity);
+assert.equal(m.visibleAt(projected,{x:2,y:2,depth:3},false),false);assert.equal(m.visibleAt(projected,{x:2,y:2,depth:1},false),true);assert.equal(m.visibleAt(projected,{x:2,y:2,depth:3},true),true);
+const ring={cell_size:2,cells:[[0,1,0,0,0],[2,1,0,0,0],[1,0,0,0,0],[1,2,0,0,0]],surface:[]};
+assert.equal(m.mesh(ring,'data',true).filled,1);assert.equal(m.mesh(ring,'data',false).filled,0);
+const stacked=structuredClone(ring);stacked.cells[0][4]=3;assert.equal(m.mesh(stacked,'data',true).filled,0);
+assert.equal(m.mesh(flat,'reference',true).triangles.length,2);assert.equal(m.mesh(flat,'reference',true).reference,true);
+const rayBox={center:[0,0,1],size:[2,2,2],yaw:0,pitch:0,roll:0};
+assert.equal(m.rayBox([0,0,-5],[0,0,1],rayBox),5);assert.equal(m.rayBox([4,0,-5],[0,0,1],rayBox),null);
+console.log('Solid ground: depth occlusion, xray, camera lock, bounded hole fill, reference floor and picking passed');

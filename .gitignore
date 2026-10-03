@@ -1,0 +1,9 @@
+data/sessions/
+__pycache__/
+*.pyc
+.DS_Store
+venv/
+.env
+models/*.pt
+models/*.onnx
+mac_models

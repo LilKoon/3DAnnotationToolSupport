@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {publishPayload,errorMessage}=require('../static/cvat-client.js');
+const binding={url:'https://cvat.example',job_id:123,frame:5};
+const credentials={url:'',job_id:0,username:' user ',password:'secret',verify_ssl:true};
+assert.deepEqual(publishPayload(binding,credentials),{url:binding.url,job_id:123,username:'user',password:'secret',verify_ssl:true,confirm:true});
+assert.equal(publishPayload(binding,{...credentials,url:'https://different.example',job_id:999}).job_id,123);
+assert.throws(()=>publishPayload(binding,{...credentials,username:''}),/Nhập lại/);
+assert.throws(()=>publishPayload(binding,{...credentials,password:''}),/Nhập lại/);
+assert.throws(()=>publishPayload({...binding,job_id:0},credentials),/hợp lệ/);
+assert.equal(errorMessage([{loc:['body','job_id'],msg:'Input should be greater than 0',input:0}],422),'job_id: Input should be greater than 0');
+assert.equal(errorMessage('CVAT login failed',400),'CVAT login failed');
+console.log('Publish client: session binding, login checks and validation error display passed.');

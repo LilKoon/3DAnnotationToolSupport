@@ -1,0 +1,19 @@
+/* V4 extends the existing navy annotation workspace. */
+:root{--v4-accent:#54c9b7;--v4-muted:#b4c6d1;--v4-border:#355064}
+.v4-card{border-color:var(--v4-border)}.v4-card h2{color:#dce7ef}.v4-card p,.v4-card .hint{color:var(--v4-muted)}
+.v4-card button{min-height:36px}.v4-card input[type=checkbox]{width:auto}.v4-status{white-space:pre-line;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.v4-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.v4-row>*{flex:1;min-width:90px}
+.v4-card pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:240px;overflow:auto}
+.v4-camera{position:relative;margin:12px 0}.v4-camera canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}.v4-camera img{margin:0;width:100%;display:block}
+.v4-card textarea{width:100%;min-height:100px;background:#0e1a25;color:#e4eef4;border:1px solid var(--v4-border);padding:8px;font-family:monospace;font-size:11px}
+.v4-card textarea:focus-visible,.v4-card summary:focus-visible{outline:2px solid var(--v4-accent);outline-offset:2px}
+.v4-toolbar{padding:6px 12px;background:#10202d;color:var(--v4-muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0;font-size:12px}.v4-toolbar select{background:#172b3d;color:#e5f3f8;padding:5px;border:1px solid var(--v4-border)}
+@media(max-width:700px){.top-actions{flex-wrap:wrap}.canvas-head{height:auto;min-height:47px;flex-wrap:wrap}.canvas-head span{margin-left:0}.v4-toolbar label{max-width:100%}.projection-options{flex-wrap:wrap}.layout{min-width:0}}
+
+.v4-solid-controls { margin: 0 0 6px; padding: 8px 12px; background: #172a35; border: 1px solid #355566; border-radius: 5px; }
+.v4-solid-controls summary { cursor: pointer; color: #b7e0db; }
+.v4-solid-controls label { display: inline-flex; align-items: center; gap: 6px; margin: 8px 12px 2px 0; }
+.v4-solid-controls input[type=checkbox] { width: auto; }
+.v4-solid-controls p { margin: 8px 0 0; font-size: 12px; }
+.v4-solid-orientation { margin: 0; padding: 6px 12px; background: #163432; color: #b9eee2; font-size: 12px; }
+.v4-solid-under { background: #482c20; color: #ffe0b5; }

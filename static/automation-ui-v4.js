@@ -1,0 +1,7 @@
+/* Optional per-frame assistance; no automatic acceptance or publication. */
+(function(){
+  const panel=document.querySelector('.left-panel .v4-card');const label=document.createElement('label');const auto=document.createElement('input');auto.type='checkbox';auto.id='v4-auto-ground';auto.checked=localStorage.getItem('v4-auto-ground')==='true';label.append(auto,' Tự quét ground khi mở frame');panel.append(label);auto.onchange=()=>localStorage.setItem('v4-auto-ground',String(auto.checked));
+  const originalSession=V4App.sessionChanged;V4App.sessionChanged=async data=>{await originalSession(data);if(auto.checked&&state.session?.id===data.id&&!state.v4Ground)await V4App.scan();};
+  const cameraLabel=document.createElement('label');const camera=document.createElement('input');camera.type='checkbox';camera.id='v4-auto-camera';camera.checked=localStorage.getItem('v4-auto-camera')==='true';cameraLabel.append(camera,' Chạy camera hỗ trợ sau auto detect 3D');$('btn-detect').after(cameraLabel);camera.onchange=()=>localStorage.setItem('v4-auto-camera',String(camera.checked));
+  const originalDetect=$('btn-detect').onclick;$('btn-detect').onclick=async event=>{const id=state.session?.id,revision=state.session?.revision;await originalDetect(event);if(camera.checked&&state.session?.id===id&&state.session.revision!==revision&&state.session.cameras.length){await $('v4-image-run').onclick();if(state.session?.id===id)await $('v4-evidence-run').onclick();}};
+})();

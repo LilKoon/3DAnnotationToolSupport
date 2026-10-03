@@ -1,0 +1,30 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>V4 WebGL regression fixture</title>
+<button id="run">Run actual GPU depth tests</button><pre id="result">Ready</pre><canvas id="output" width="240" height="240"></canvas>
+<script src="/static/solid-ground-math-v4.js"></script><script src="/static/cuboid-edit.js"></script>
+<script>function selected(){return null;}function render(){}const edges=[];</script>
+<script src="/static/solid-ground-gl-v4.js"></script><script>
+document.querySelector('#run').onclick=()=>{
+ try{
+  const checks=[],assert=(condition,text)=>{if(!condition)throw Error(text);checks.push(text);};
+  const canvas=document.querySelector('#output'),ctx=canvas.getContext('2d'),renderer=new SolidGroundGL.DepthRenderer();
+  const mesh={triangles:[[[-5,-5,0],[5,-5,0],[5,5,0]],[[-5,-5,0],[5,5,0],[-5,5,0]]],filled:0};
+  const s={points:[[0,0,1],[0,0,-1]],pointColors:[[0,255,0],[255,0,0]],pointColorMode:'source',pointSize:9,yaw:0,elevation:1,selected:null,session:{boxes:[]},bounds:{range:30,mid:[0,0,0]},v4Ground:{cells:[],cell_size:2,display_mask:[2,2]},v4Scene:{mode:'surface',maxRange:Infinity,zMin:null,zMax:null,focus:false}};
+  const g={ctx,w:240,h:240,scale:16,mid:[0,0,0]},options={xray:false,details:false,footprints:false,relative:false};
+  const pixel=p=>{const y=120-p[2]*Math.cos(s.elevation)*16;return [...ctx.getImageData(120,Math.floor(y),1,1).data];};
+  renderer.draw(g,s,mesh,options);
+  let top=pixel(s.points[0]),bottom=pixel(s.points[1]);
+  assert(top[1]>220&&top[0]<40,'above point visible from above');
+  assert(!(bottom[0]>220&&bottom[1]<40),'below point occluded from above');
+  const upper=[...ctx.getImageData(100,100,1,1).data];assert(upper[2]>upper[0],'upper terrain has blue-green material');
+  s.elevation=-1;renderer.draw(g,s,mesh,options);top=pixel(s.points[0]);bottom=pixel(s.points[1]);
+  assert(bottom[0]>220&&bottom[1]<40,'below point visible from below');
+  assert(!(top[1]>220&&top[0]<40),'above point occluded from below');
+  const underside=[...ctx.getImageData(100,100,1,1).data];assert(underside[0]>underside[2],'underside has brown material');
+  options.xray=true;renderer.draw(g,s,mesh,options);top=pixel(s.points[0]);bottom=pixel(s.points[1]);
+  assert(top[1]>220&&top[0]<40&&bottom[0]>220&&bottom[1]<40,'xray reveals both sides');
+  options.xray=false;s.elevation=1;s.v4Scene.zMin=0;renderer.draw(g,s,mesh,options);
+  assert(!(pixel(s.points[1])[0]>220&&pixel(s.points[1])[1]<40),'world height clipping');
+  document.querySelector('#result').textContent=JSON.stringify({passed:true,checks,renderer:'webgl'},null,2);
+ }catch(e){document.querySelector('#result').textContent=JSON.stringify({passed:false,error:e.message});}
+};
+</script></html>

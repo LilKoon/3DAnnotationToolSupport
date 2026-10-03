@@ -1,0 +1,29 @@
+All 6 axis permutations: orthogonal axes, signed directions and gizmo movement verified.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/axis-order.test.cjs (35.417917ms)
+Cuboid editing: full rotation, four corners and fixed opposite corners passed.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/cuboid-edit.test.cjs (33.576959ms)
+Ground lifecycle: same frame after detect, new frame reset, lazy scan, mode preservation and pending raw choice passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/ground-lifecycle-v4.test.cjs (34.317375ms)
+Image label aliases preserve LiDAR mapping
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/image-label-v4.test.cjs (32.939792ms)
+Navigation: pan and XYZ drag match projected movement across camera angles.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/navigation.test.cjs (33.455917ms)
+Projection focus: oriented crop, viewport fit and silhouette passed.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/projection-focus.test.cjs (33.173375ms)
+Publish client: session binding, login checks and validation error display passed.
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/publish-client.test.cjs (32.613458ms)
+Scene: raw/dim/hide/unknown/ROI/range passed
+Height filtering passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/scene-v4.test.cjs (32.611333ms)
+Session saves: snapshots, coalescing and revision isolation passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/session-save-v4.test.cjs (32.250708ms)
+Solid ground: depth occlusion, xray, camera lock, bounded hole fill, reference floor and picking passed
+✔ /Users/lilkoon/code/Project/cvat-auto-segmentation/v4/tests/solid-ground-v4.test.cjs (31.403959ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 41.64575

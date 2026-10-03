@@ -1,0 +1,35 @@
+<!doctype html><html><meta charset="utf-8"><title>V4 opposite-side regression</title>
+<button id="run">Run opposite-side GPU tests</button><pre id="result">Ready</pre><canvas id="output" width="240" height="240"></canvas>
+<script src="/static/solid-ground-math-v4.js"></script><script src="/static/cuboid-edit.js"></script>
+<script>let chosen=null;function selected(){return chosen;}function render(){}function axisEnd(b,a){return b.center;}const edges=[[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4]];</script>
+<script src="/static/solid-ground-gl-v4.js"></script><script>
+document.querySelector('#run').onclick=()=>{
+ try{
+ const checks=[],assert=(c,t)=>{if(!c)throw Error(t);checks.push(t);};
+ const ctx=document.querySelector('#output').getContext('2d'),r=new SolidGroundGL.DepthRenderer();
+ const mesh={reference:true,filled:0,triangles:[[[-1,-1,0],[1,-1,0],[1,1,0]],[[-1,-1,0],[1,1,0],[-1,1,0]]]};
+ const s={points:[[5,0,1],[5,0,-1]],pointColors:[[0,255,0],[255,0,0]],pointColorMode:'source',pointSize:9,yaw:0,elevation:1,selected:null,session:{boxes:[],label_specs:[]},bounds:{range:30,mid:[0,0,0]},v4Ground:{cell_size:2,cells:[[0,0,0,0,0]],display_mask:[2,2]},v4Scene:{mode:'surface',maxRange:Infinity,zMin:null,zMax:null,focus:false}};
+ const g={ctx,w:240,h:240,scale:16,mid:[0,0,0]},o={seal:false,xray:false,details:false,footprints:false,relative:false};
+ const count=channel=>{{const pixels=ctx.getImageData(0,0,240,240).data;let hits=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i+channel]>pixels[i+(channel===0?1:0)]+35&&pixels[i+channel]>pixels[i+2]+35)hits++;return hits;}const d=ctx.getImageData(0,0,240,240).data;let n=0;for(let i=0;i<d.length;i+=4)if(d[i+channel]>220&&d[i+(channel===0?1:0)]<40)n++;return n;};
+ r.draw(g,s,mesh,o);assert(count(0)>0,'reproduced: opposite-side points outside floor visible without isolation');
+ o.seal=true;r.draw(g,s,mesh,o);assert(count(0)===0,'above view hides below points outside floor');assert(count(1)>0,'above points retained');
+ s.elevation=-1;r.draw(g,s,mesh,o);assert(count(1)===0,'below view hides above points outside floor');assert(count(0)>0,'below points retained');
+ o.xray=true;r.draw(g,s,mesh,o);assert(count(0)>0&&count(1)>0,'xray deliberately reveals both sides');o.xray=false;
+ mesh.triangles=[[[-6,-6,0],[6,-6,0],[6,6,0]],[[-6,-6,0],[6,6,0],[-6,6,0]]];
+ s.elevation=1;s.v4Scene.zMin=.5;r.draw(g,s,mesh,o);
+ let p=ctx.getImageData(100,100,1,1).data;assert(p[0]>40&&p[2]>p[0],'Z filter does not punch through occluder');assert(count(0)===0,'Z filter keeps below side hidden');
+ s.v4Scene.zMin=null;chosen={id:'focus',center:[5,0,1],size:[1,1,1],label:'car',status:'pending',yaw:0,pitch:0,roll:0};s.v4Scene.focus=true;r.draw(g,s,mesh,o);
+ p=ctx.getImageData(100,100,1,1).data;assert(p[0]>40&&p[2]>p[0],'Focus does not punch through occluder');
+ s.v4Scene.focus=false;chosen=null;s.points=[];s.session.label_specs=[{name:'car',color:'#ff0000'}];s.session.boxes=[{id:'box',center:[5,0,-1],size:[1,1,.5],label:'car',status:'pending',yaw:0,pitch:0,roll:0}];
+ r.draw(g,s,mesh,o);assert(count(0)===0,'below cuboid edges hidden from above outside floor');
+ s.elevation=-1;r.draw(g,s,mesh,o);if(count(0)===0)throw Error('below edges diagnostic '+JSON.stringify({gl:r.gl.getError(),corners:CuboidEdit.corners(s.session.boxes[0]),centerPixel:[...ctx.getImageData(200,120,1,1).data]}));assert(count(0)>0,'below cuboid edges retained below');
+ s.session.boxes[0].center[2]=1;r.draw(g,s,mesh,o);assert(count(0)===0,'above cuboid edges hidden from below');
+ o.xray=true;r.draw(g,s,mesh,o);assert(count(0)>0,'xray reveals hidden cuboid edges');
+ o.xray=false;o.floorOnly=true;s.points=[[5,0,-1]];s.pointColors=[[255,0,0]];s.session.boxes[0].center[2]=-1;
+ r.draw(g,s,mesh,o);assert(count(0)===0,'underside presentation hides all native below-ground points and boxes');
+ o.xray=true;r.draw(g,s,mesh,o);assert(count(0)>0,'xray restores native below-ground points and boxes');
+ o.xray=false;s.elevation=1;s.points=[[5,0,1]];s.pointColors=[[0,255,0]];r.draw(g,s,mesh,o);assert(count(1)>0,'underside-only presentation does not hide above-view objects');
+ document.querySelector('#result').textContent=JSON.stringify({passed:true,checks},null,2);
+ }catch(e){document.querySelector('#result').textContent=JSON.stringify({passed:false,error:e.message});}
+};
+</script></html>

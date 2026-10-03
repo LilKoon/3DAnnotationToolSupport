@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {nearBox,fitScale,hull}=require('../static/projection-focus.js');
+const box={center:[10,20,1],size:[4,2,2],yaw:Math.PI/2};
+assert.equal(nearBox([10,20,1],box,'top'),true);
+assert.equal(nearBox([10,20,20],box,'top'),false);
+assert.equal(nearBox([30,20,1],box,'front'),false);
+assert.equal(nearBox([10,23,1],box,'front'),true);
+assert.equal(nearBox([10,23,1],box,'side'),false);
+assert.equal(fitScale(box,'top',300,200),32.5);
+assert.equal(hull([{x:0,y:0},{x:2,y:0},{x:2,y:1},{x:0,y:1},{x:1,y:0},{x:0,y:0}]).length,4);
+console.log('Projection focus: oriented crop, viewport fit and silhouette passed.');
