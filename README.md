@@ -95,7 +95,7 @@ Từ V4:
 node tools/browser_verify_handoff.cjs
 ```
 
-Browser script dùng Chrome và Playwright trong bundled Codex runtime trên máy hiện tại, server cổng 8004. Các report và ảnh chụp được lưu ở thư mục verification riêng cho mỗi lần chạy. Xem [TEST_REPORT.md](TEST_REPORT.md) và [tasks/todo.md](tasks/todo.md).
+Browser script dùng Chrome và Playwright trong bundled Codex runtime trên máy hiện tại, server cổng 8004. Các report và ảnh chụp được lưu ở thư mục verification riêng cho mỗi lần chạy. Xem [TEST_REPORT.md](docs/internal/TEST_REPORT.md) và [tasks/todo.md](tasks/todo.md).
 
 ## Giới hạn cần giữ khi sử dụng
 
@@ -107,7 +107,7 @@ Camera-guided proposal là trợ giúp hình học, chưa phải model fusion đ
 Sau khi chạy model trên cùng frame, ground và chế độ hiển thị được giữ nguyên. Chọn Mờ/Ẩn ground/Bề mặt liền sẽ tự quét nếu frame chưa có ground. Chuyển sang frame khác vẫn reset dữ liệu ground để tránh dùng nhầm mask.
 
 ## Ground đặc / góc nhìn rõ trên-dưới
-Main view đã có WebGL depth, X-ray, mặt đáy nâu sọc, khóa nhìn dưới mặc định, sàn tham chiếu kín và nhãn/trục gọn. Nút Quét mặt đất từ chế độ raw bật surface. Xem [GROUND_SOLID.md](GROUND_SOLID.md) để dùng và hiểu giới hạn của sàn tham chiếu.
+Main view đã có WebGL depth, X-ray, mặt đáy nâu sọc, khóa nhìn dưới mặc định, sàn tham chiếu kín và nhãn/trục gọn. Nút Quét mặt đất từ chế độ raw bật surface. Xem [GROUND_SOLID.md](docs/internal/GROUND_SOLID.md) để dùng và hiểu giới hạn của sàn tham chiếu.
 
 ## Bố cục thao tác mới
-Canvas lớn ở giữa; rail trái Dữ liệu / AI / Hiển thị, rail phải Objects / Camera / Kiểm tra. Nhấn nhóm để mở hoặc thu panel. Tập trung và Hình chiếu nằm ở đầu canvas. Nhãn/trục được tách riêng trong Hiển thị → Object & góc nhìn. Hướng dẫn: [WORKSPACE_UX.md](WORKSPACE_UX.md).
+Canvas lớn ở giữa; rail trái Dữ liệu / AI / Hiển thị, rail phải Objects / Camera / Kiểm tra. Nhấn nhóm để mở hoặc thu panel. Tập trung và Hình chiếu nằm ở đầu canvas. Nhãn/trục được tách riêng trong Hiển thị → Object & góc nhìn. Hướng dẫn: [WORKSPACE_UX.md](docs/internal/WORKSPACE_UX.md).
