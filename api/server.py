@@ -34,7 +34,7 @@ app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 import os
 # Default hash for "lilkoon"
-ACCESS_KEY_HASH = os.environ.get("V4_ACCESS_KEY_HASH", "39611684c304db9bc8ddbba0eb4159be432d5e27a6f7b15d045d9471900a0f8b")
+ACCESS_KEY_HASH = os.environ.get("V4_ACCESS_KEY_HASH", "1685a500b7fd5b9f181fc463488a47642fe0b0fc34299bcf9a196393b165e608")
 
 @app.middleware("http")
 async def verify_access_key(request: Request, call_next):
@@ -155,9 +155,11 @@ def publish_preview(session_id: str, payload: Credentials):
                 cvat_oriented_box(Cuboid(**item))
         _, job = payload.connect()
         data = job.get_annotations().to_dict()
-        if data.get('tracks'):
-            raise ValueError('Job có track. Ghi đè hiện chỉ hỗ trợ annotation dạng shape; hãy dùng chế độ Thêm để giữ track.')
         targets = [{'id': shape['id'], 'label_id': shape['label_id'], 'type': shape['type']} for shape in data.get('shapes', []) if shape['frame'] == binding['frame']]
+        for track in data.get('tracks', []):
+            for shape in track['shapes']:
+                if shape['frame'] == binding['frame']:
+                    targets.append({'id': track['id'], 'label_id': track['label_id'], 'type': 'track_cuboid'})
         return {'frame': binding['frame'], 'job_id': binding['job_id'], 'targets': targets, 'replacement_token': annotation_token(data), 'revision': session['revision']}
     except (ValueError, FileNotFoundError) as error:
         raise HTTPException(400, str(error))
@@ -272,18 +274,15 @@ def list_cvat_jobs(auth: CVATAuth):
         # Fetch jobs assigned to the user or all accessible jobs
         # cvat_sdk client.jobs.list() returns a list of jobs.
         jobs_data = []
-        # Get current user
-        user = client.users.retrieve("self")
-        # List jobs where user is assignee
+        # List all accessible jobs (first few pages)
         # Note: cvat_sdk list() might return a tuple or object with items
-        jobs_response = client.jobs.list(assignee=user.username)
+        jobs_response = client.jobs.list()
         # jobs_response is typically an iterable or has .results
         items = getattr(jobs_response, 'results', jobs_response)
         
-        # If no jobs assigned, just fetch a few recent jobs
-        if not items:
-            jobs_response = client.jobs.list()
-            items = getattr(jobs_response, 'results', jobs_response)
+        # If it's a tuple (which it is in some cvat-sdk versions like (data, response)), extract data
+        if isinstance(items, tuple) and len(items) > 0 and isinstance(items[0], (list, tuple)):
+            items = items[0]
             
         for job in items[:50]: # Limit to 50 jobs
             # Retrieve project or task info to make it readable
@@ -345,8 +344,23 @@ def import_job_frame(payload: JobFrame):
                         boxes.append(parse_cvat_points(uuid4().hex, label_name, shape.points, payload.frame, attributes))
                     except (ValueError, TypeError) as error:
                         session['import_warnings'].append(f'Box CVAT {shape.id}: {error}')
-            if annotations.tracks:
-                session['import_warnings'].append(f'Job có {len(annotations.tracks)} track; tool hiện chỉ import cuboid dạng shape.')
+                        
+            for track in annotations.tracks:
+                valid_shapes = [s for s in track.shapes if s.frame <= payload.frame]
+                if not valid_shapes:
+                    continue
+                valid_shapes.sort(key=lambda s: s.frame)
+                shape = valid_shapes[-1]
+                if shape.outside or shape.type.value != "cuboid":
+                    continue
+                label_name = labels_by_id.get(track.label_id, "Object")
+                label_spec = label_specs[track.label_id]
+                attribute_names = {spec.id: spec.name for spec in (label_spec.attributes or [])}
+                attributes = {attribute_names[item.spec_id]: item.value for item in (shape.attributes or []) if item.spec_id in attribute_names}
+                try:
+                    boxes.append(parse_cvat_points(uuid4().hex, label_name, shape.points, payload.frame, attributes))
+                except (ValueError, TypeError) as error:
+                    session['import_warnings'].append(f'Track CVAT {track.id}: {error}')
             store.save(session)
             if boxes:
                 session = store.update(session["id"], session["revision"], boxes)
@@ -486,10 +500,10 @@ def publish(session_id: str, payload: PublishRequest):
         selected = [Cuboid(**item) for item in session["boxes"] if item["status"] == "accepted" and (payload.mode == 'replace' or (item["id"] not in published and item.get('source') != 'cvat'))]
         if not selected:
             return {"published": 0, "message": "No new accepted cuboids"}
-        from cvat_sdk.models import AttributeValRequest, LabeledShapeRequest, PatchedLabeledDataRequest, ShapeType
+        from cvat_sdk.models import AttributeValRequest, LabeledShapeRequest, PatchedLabeledDataRequest, ShapeType, LabeledTrackRequest, TrackedShapeRequest
         from cvat_sdk.core.proxies.annotations import AnnotationUpdateAction
 
-        shapes = []
+        tracks = []
         for box in selected:
             exported = cvat_oriented_box(box)
             label = labels.get(box.label)
@@ -497,28 +511,51 @@ def publish(session_id: str, payload: PublishRequest):
                 raise ValueError(f"CVAT label missing: {box.label}")
             spec_by_name = {attribute.name: attribute for attribute in (label.attributes or [])}
             attributes = [AttributeValRequest(spec_id=spec_by_name[name].id, value=value) for name, value in axis_attributes(exported).items() if name in spec_by_name]
-            shapes.append(LabeledShapeRequest(type=ShapeType("cuboid"), frame=binding["frame"], label_id=label.id, points=cvat_points(exported), attributes=attributes, occluded=False, outside=False, z_order=0))
+            
+            track_shape = TrackedShapeRequest(
+                type=ShapeType("cuboid"),
+                frame=binding["frame"],
+                points=cvat_points(exported),
+                attributes=attributes,
+                occluded=False,
+                outside=False,
+                keyframe=True,
+                z_order=0
+            )
+            tracks.append(LabeledTrackRequest(
+                frame=binding["frame"],
+                label_id=label.id,
+                shapes=[track_shape],
+                attributes=[],
+                group=0
+            ))
+            
         replaced = 0
         backup_path = None
         if payload.mode == 'replace':
             from cvat_sdk.models import LabeledDataRequest
             data = job.get_annotations().to_dict()
-            if data.get('tracks'):
-                raise ValueError('Job có track; dùng chế độ Thêm để giữ track.')
             if not payload.replacement_token or payload.replacement_token != annotation_token(data):
                 raise HTTPException(409, 'Annotation CVAT đã thay đổi hoặc chưa được xem trước. Xem và xác nhận lại danh sách ghi đè.')
+            
             previous_shapes = data.get('shapes', [])
-            kept = [shape for shape in previous_shapes if shape['frame'] != binding['frame']]
-            replaced = len(previous_shapes) - len(kept)
+            kept_shapes = [shape for shape in previous_shapes if shape['frame'] != binding['frame']]
+            
+            previous_tracks = data.get('tracks', [])
+            for track in previous_tracks:
+                track['shapes'] = [s for s in track['shapes'] if s['frame'] != binding['frame']]
+            kept_tracks = [t for t in previous_tracks if t['shapes']]
+            
+            replaced = (len(previous_shapes) - len(kept_shapes)) + (len(previous_tracks) - len(kept_tracks))
             backup_dir = store.root / session_id / 'publish_backups'
             backup_dir.mkdir(parents=True, exist_ok=True)
             backup_path = backup_dir / f'{uuid4().hex}.json'
             with backup_path.open('x', encoding='utf-8') as backup:
                 json.dump({'binding': binding, 'annotations': data}, backup, ensure_ascii=False, indent=2)
-            replacement = {**data, 'shapes': [*kept, *[shape.to_dict() for shape in shapes]]}
+            replacement = {**data, 'shapes': kept_shapes, 'tracks': [*kept_tracks, *[track.to_dict() for track in tracks]]}
             job.set_annotations(LabeledDataRequest._from_openapi_data(**cvat_replacement_data(replacement)))
         else:
-            job.update_annotations(PatchedLabeledDataRequest(shapes=shapes), action=AnnotationUpdateAction.CREATE)
+            job.update_annotations(PatchedLabeledDataRequest(tracks=tracks), action=AnnotationUpdateAction.CREATE)
         session["published_ids"] = [box.id for box in selected] if payload.mode == 'replace' else [*published, *[box.id for box in selected]]
         session["revision"] += 1
         store.save(session)

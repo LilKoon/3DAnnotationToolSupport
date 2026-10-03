@@ -233,7 +233,16 @@ function renderMapping(){
 }
 function currentMapping(){return Object.fromEntries([...$('label-mapping').querySelectorAll('select')].map(select=>[select.dataset.source,select.value]))}
 async function openSession(id){const data=await api(`/api/sessions/${id}`);if(state.session?.id!==id){state.mainZoom=1;state.viewTarget=null;state.viewRange=null;state.zoom=1;state.yaw=-.6;state.elevation=.68;state.evaluation=null;$('evaluation-results').replaceChildren();$('evaluation-frames').replaceChildren();$('evaluation-complete').checked=false;$('btn-apply-recommendation').hidden=true;$('evaluation-status').textContent=''}state.session=data;if(globalThis.V4App)V4App.sessionChanged(data);if(data.cvat){$('cvat-url').value=data.cvat.url;$('cvat-job').value=data.cvat.job_id;}state.points=data.points;state.pointColors=data.point_colors||null;$('point-color-hint').textContent=state.pointColors?'Có RGB gốc':'File không có RGB; dùng màu sáng';state.bounds=bounds(state.points);state.selected=null;$('session-title').textContent=data.title;$('point-count').textContent=`${state.points.length.toLocaleString()} điểm hiển thị`;$('btn-add').disabled=false;$('btn-export').disabled=false;$('btn-publish').disabled=!data.cvat;$('btn-detect').disabled=!$('model').selectedOptions[0]?.dataset.ready;const labels=$('edit-label');labels.replaceChildren();for(const name of data.labels){const option=document.createElement('option');option.value=name;option.textContent=name;labels.append(option)}history.replaceState(null,'',`/?session=${id}`);localStorage.setItem('cvat-v4-last-session', id);populateAxisConvention();renderList();renderCameras();restoreDetectorPreferences();renderMapping();populateEditor();renderDetectionReport();render();$('save-state').textContent=`Đã tải · r${data.revision}`}
-function credentials(){return {url:$('cvat-url').value,username:$('cvat-user').value,password:$('cvat-pass').value,job_id:Number($('cvat-job').value),verify_ssl:true}}
+function credentials() {
+  const loginHidden = $('cvat-login-form').style.display === 'none';
+  return {
+    url: loginHidden ? (localStorage.getItem('v4_cvat_url') || $('cvat-url').value) : $('cvat-url').value,
+    username: loginHidden ? (localStorage.getItem('v4_cvat_user') || $('cvat-user').value) : $('cvat-user').value,
+    password: loginHidden ? (localStorage.getItem('v4_cvat_pass') || $('cvat-pass').value) : $('cvat-pass').value,
+    job_id: Number($('cvat-job').value),
+    verify_ssl: true
+  };
+}
 async function loadModels(){
   try{
     await initDetectorUI();
@@ -440,7 +449,12 @@ async function fetchCVATJobs() {
     }
     message(`Đã tải ${data.jobs.length} Job từ CVAT.`);
   } catch (error) {
-    fail(error);
+    if (error.message.includes('Unable to log in') || error.message.includes('400')) {
+      $('btn-cvat-logout').click(); // Auto clear bad credentials and show form
+      fail('Sai tài khoản hoặc mật khẩu CVAT! Vui lòng nhập lại.');
+    } else {
+      fail(error);
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = 'Kết nối & Tải danh sách Job';
