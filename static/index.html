@@ -10,6 +10,30 @@
   <link rel="stylesheet" href="/static/workspace-layout-v4.css">
 </head>
 <body>
+  <style>
+    .auth-modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(16, 24, 39, 0.95);
+      z-index: 9999; display: flex; align-items: center; justify-content: center;
+    }
+    .auth-modal-content {
+      background: #1e293b; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      text-align: center; max-width: 400px; width: 100%; border: 1px solid #334155;
+    }
+    .auth-modal h2 { margin-top: 0; color: #f8fafc; }
+    .auth-modal p { color: #94a3b8; margin-bottom: 20px; }
+    .auth-modal input { width: 100%; box-sizing: border-box; margin-bottom: 15px; text-align: center; font-size: 16px; padding: 10px; }
+    .auth-modal button { width: 100%; padding: 10px; font-size: 16px; background: #38bdf8; color: #0f172a; font-weight: bold; }
+  </style>
+  <div id="access-modal" class="auth-modal" style="display: none;">
+    <div class="auth-modal-content">
+      <h2>Yêu cầu Access Key</h2>
+      <p>Vui lòng nhập Access Key để truy cập công cụ 3D Annotation.</p>
+      <input type="password" id="access-key-input" placeholder="Nhập Access Key">
+      <button id="btn-submit-key">Xác nhận</button>
+      <p id="access-error" style="color: #ef4444; margin-top: 15px; display: none;">Key không hợp lệ!</p>
+    </div>
+  </div>
   <header class="topbar">
     <div class="brand"><span class="brand-mark">C</span><div><strong>CVAT Auto Annotation</strong><small>V4 · Ground + Camera Assist</small></div></div>
     <div class="top-actions">
@@ -27,13 +51,21 @@
         <label class="file-button">Mở PCD/BIN<input id="file" type="file" accept=".pcd,.bin" hidden></label>
         <button id="btn-demo">Mở demo 3D</button>
         <details><summary>Kết nối CVAT job</summary>
-          <label>URL<input id="cvat-url" type="url" placeholder="https://cvat.example.com"></label>
-          <label>Tài khoản<input id="cvat-user" autocomplete="username"></label>
-          <label>Mật khẩu<input id="cvat-pass" type="password" autocomplete="current-password"></label>
-          <label>Job ID<input id="cvat-job" type="number" min="1"></label>
-          <button id="btn-frames">Đọc frame</button>
-          <label>Frame<select id="cvat-frame"></select></label>
-          <button id="btn-import">Mở frame</button>
+          <div id="cvat-login-form">
+            <label>URL<input id="cvat-url" type="url" placeholder="https://cvat.example.com"></label>
+            <label>Tài khoản<input id="cvat-user" autocomplete="username"></label>
+            <label>Mật khẩu<input id="cvat-pass" type="password" autocomplete="current-password"></label>
+            <button id="btn-fetch-jobs">Kết nối & Tải danh sách Job</button>
+          </div>
+          <div id="cvat-job-section" style="display: none; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+            <p style="margin-bottom: 5px;">Đang dùng: <strong id="cvat-current-user"></strong></p>
+            <button id="btn-cvat-logout" class="secondary" style="margin-bottom:10px;">Đổi tài khoản</button>
+            <label>Chọn Job<select id="cvat-job-select"></select></label>
+            <input id="cvat-job" type="hidden">
+            <button id="btn-frames">Đọc frame</button>
+            <label>Frame<select id="cvat-frame"></select></label>
+            <button id="btn-import">Mở frame</button>
+          </div>
         </details>
       </section>
       <section class="card"><details><summary>Quy ước trục của bài</summary><label>Trục mặc định cho box mới<select id="session-axis-order"></select></label><div class="triple"><label>Chiều X<select id="session-sign-x"><option value="1">+</option><option value="-1">−</option></select></label><label>Chiều Y<select id="session-sign-y"><option value="1">+</option><option value="-1">−</option></select></label><label>Chiều Z<select id="session-sign-z"><option value="1">+</option><option value="-1">−</option></select></label></div><button id="btn-session-axes" disabled>Lưu cho box mới</button><button id="btn-apply-axes" disabled>Áp dụng cho mọi box hiện có</button><p class="hint">Đặt tên trục vật thể theo bài. Dài/rộng/cao là ba cạnh của cuboid; tọa độ LiDAR không bị đổi.</p></details></section>

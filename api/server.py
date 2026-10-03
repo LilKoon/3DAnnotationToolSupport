@@ -32,6 +32,30 @@ store = SessionStore(ROOT / "data" / "sessions")
 app = FastAPI(title="CVAT 3D Annotation V4")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
+import os
+# Default hash for "lilkoon"
+ACCESS_KEY_HASH = os.environ.get("V4_ACCESS_KEY_HASH", "39611684c304db9bc8ddbba0eb4159be432d5e27a6f7b15d045d9471900a0f8b")
+
+@app.middleware("http")
+async def verify_access_key(request: Request, call_next):
+    if request.url.path.startswith("/api/"):
+        # Allow preflight requests
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
+        # Check header or query param
+        auth_header = request.headers.get("Authorization")
+        key = None
+        if auth_header and auth_header.startswith("Bearer "):
+            key = auth_header.split(" ")[1]
+        if not key:
+            key = request.query_params.get("access_key")
+            
+        if not key or hashlib.sha256(key.encode()).hexdigest() != ACCESS_KEY_HASH:
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing Access Key"})
+            
+    return await call_next(request)
+
 
 class Credentials(BaseModel):
     url: str
@@ -224,6 +248,57 @@ def demo():
     box = Cuboid(id="demo-car", label="car", center=[7, -1, -.55], size=[4, 2, 1.4], source="demo")
     return store.update(session["id"], session["revision"], [box])
 
+
+class CVATAuth(BaseModel):
+    url: str
+    username: str
+    password: str
+    verify_ssl: bool = True
+
+    def connect(self):
+        parsed = urlparse(self.url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            raise ValueError("CVAT URL must be http or https")
+        from cvat_sdk import Config
+        from cvat_sdk.core.client import Client
+        client = Client(self.url.rstrip("/"), config=Config(verify_ssl=self.verify_ssl))
+        client.login((self.username, self.password))
+        return client
+
+@app.post("/api/cvat/jobs")
+def list_cvat_jobs(auth: CVATAuth):
+    try:
+        client = auth.connect()
+        # Fetch jobs assigned to the user or all accessible jobs
+        # cvat_sdk client.jobs.list() returns a list of jobs.
+        jobs_data = []
+        # Get current user
+        user = client.users.retrieve("self")
+        # List jobs where user is assignee
+        # Note: cvat_sdk list() might return a tuple or object with items
+        jobs_response = client.jobs.list(assignee=user.username)
+        # jobs_response is typically an iterable or has .results
+        items = getattr(jobs_response, 'results', jobs_response)
+        
+        # If no jobs assigned, just fetch a few recent jobs
+        if not items:
+            jobs_response = client.jobs.list()
+            items = getattr(jobs_response, 'results', jobs_response)
+            
+        for job in items[:50]: # Limit to 50 jobs
+            # Retrieve project or task info to make it readable
+            task_id = job.task_id
+            jobs_data.append({
+                "id": job.id,
+                "task_id": task_id,
+                "project_id": getattr(job, 'project_id', None),
+                "status": job.state.value if hasattr(job.state, 'value') else str(job.state),
+                "stage": job.stage.value if hasattr(job.stage, 'value') else str(job.stage),
+                "url": f"{auth.url.rstrip('/')}/tasks/{task_id}/jobs/{job.id}"
+            })
+        return {"jobs": jobs_data}
+    except Exception as error:
+        raise HTTPException(400, f"Cannot fetch CVAT jobs: {error}") from error
 
 @app.post("/api/cvat/job")
 def job_info(credentials: Credentials):

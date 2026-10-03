@@ -2,17 +2,50 @@
 
 V4 triển khai ground display và camera assist trên nền V3. Source và dữ liệu V4 nằm riêng; các checkpoint LiDAR hiện có được tham chiếu từ V3.
 
-## Chạy trên máy hiện tại
+## 🚀 Hướng dẫn Cài đặt (Setup Guide)
 
-Từ thư mục project:
+Dự án hỗ trợ chạy trên cả **macOS/Linux** và **Windows** thông qua thư viện ONNX Runtime.
 
+### 1. Tạo môi trường ảo và cài đặt thư viện
+Từ thư mục gốc của project (có chứa file `requirements.txt`):
+
+**Trên macOS/Linux:**
 ```sh
-bash v4/run.sh
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Mở http://127.0.0.1:8004. Nếu server đang chạy thì mở trực tiếp địa chỉ này. V4 dùng virtualenv `../venv`. Máy mới cần cài `v4/requirements.txt` và cấu hình checkpoint LiDAR như V3; symlink `mac_models` hiện trỏ vào thư mục V3 trên máy này.
+**Trên Windows:**
+```bat
+python -m venv venv
+venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+*(Nếu bạn có Card màn hình NVIDIA trên Windows, hãy chạy thêm: `pip install onnxruntime-directml` để tăng tốc AI).*
 
-YOLO11n chạy CPU cục bộ. Checkpoint đã được cài trong `models/yolo11n.pt`; runtime không tự tải model khi nhận diện. Khi thiếu checkpoint, chạy `../venv/bin/python tools/setup_image.py` từ V4. Checkpoint chính thức SHA256: `0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1`.
+### 2. Tải và cấu hình Model AI
+Chạy script tự động tải model YOLO (nếu bạn chưa có):
+```sh
+python tools/setup_image.py
+```
+*Tùy chọn cho Windows (Option A)*: Để model chạy nhẹ hơn trên môi trường Windows mà không cần load toàn bộ PyTorch, hãy chuyển đổi model `.pt` sang `.onnx` bằng lệnh sau:
+```sh
+python tools/export_onnx.py
+```
+*(Hệ thống sẽ ưu tiên load file `.onnx` nếu tìm thấy, hoặc tự động lùi về dùng `.pt` như cũ nếu không có).*
+
+### 3. Khởi chạy Server
+**Trên macOS/Linux:**
+```sh
+./run.sh
+```
+
+**Trên Windows:** Nhấp đúp vào file `run.bat` (hoặc chạy qua Terminal):
+```bat
+run.bat
+```
+👉 Mở trình duyệt và truy cập: http://127.0.0.1:8004
 
 ## Các phase đã triển khai
 

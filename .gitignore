@@ -7,3 +7,5 @@ venv/
 models/*.pt
 models/*.onnx
 mac_models
+data/verification/
+docs/internal/

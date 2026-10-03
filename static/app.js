@@ -38,7 +38,16 @@ async function reviewBoxes(status,bulk=false){
 }
 
 async function api(path, options={}) {
+  const key = localStorage.getItem('v4_access_key');
+  if (key) {
+    options.headers = options.headers || {};
+    options.headers['Authorization'] = `Bearer ${key}`;
+  }
   const response = await fetch(path, options);
+  if (response.status === 401) {
+    if (typeof showAccessModal === 'function') showAccessModal(true);
+    throw new Error('Yêu cầu Access Key (401)');
+  }
   let result;
   try { result = await response.json(); } catch { throw new Error(`HTTP ${response.status}`); }
   if (!response.ok) throw new Error(CVATClient.errorMessage(result.detail,response.status));
@@ -199,7 +208,7 @@ async function archiveSelected(box=selected(),restore=false){if(!box||!state.ses
   if(!restore&&!confirm(`Xoá box ${box.label}\nID: ${box.id}\nKhỏi danh sách đang gắn nhãn? Box được giữ trong “Box đã xoá” và có thể khôi phục. Không xoá dữ liệu trên CVAT.`))return;
   const id=state.session.id;state.saving=true;setDetectorBusy(true);updateReviewUI();$('save-state').textContent='Đang lưu…';try{const updated=await api(`/api/sessions/${id}/boxes/${encodeURIComponent(box.id)}/archive`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:state.session.revision,restore})});if(state.session.id!==id)return;state.session={...state.session,...updated};state.selected=restore?box.id:(updated.boxes.find(item=>item.status!=='rejected')||updated.boxes[0])?.id||null;populateEditor();renderList();render();$('save-state').textContent=`Đã lưu · r${updated.revision}`;message(restore?'Đã khôi phục box.':'Đã xoá box khỏi bản nháp. Có thể lấy lại trong Box đã xoá.')}catch(error){fail(error)}finally{state.saving=false;setDetectorBusy(false);updateReviewUI()}}
 async function save(){if(!state.session)return;state.pendingSave=true;if(state.saving)return;state.saving=true;$('save-state').textContent='Đang lưu…';try{while(state.pendingSave){state.pendingSave=false;const revision=state.session.revision,boxes=structuredClone(state.session.boxes),id=state.session.id;const updated=await api(`/api/sessions/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision,boxes})});state.session.revision=updated.revision;$('save-state').textContent=`Đã lưu · r${updated.revision}`;renderList()}}catch(error){$('save-state').textContent='Lưu lỗi';fail(error)}finally{state.saving=false;updateReviewUI()}}
-function renderCameras(){const list=$('camera-list');list.replaceChildren();for(const camera of state.session?.cameras||[]){const label=document.createElement('small');label.textContent=camera.name;const img=document.createElement('img');img.alt=`Camera ${camera.name}`;img.src=`/api/sessions/${state.session.id}/cameras/${camera.index}`;list.append(label,img)}}
+function renderCameras(){const list=$('camera-list');list.replaceChildren();for(const camera of state.session?.cameras||[]){const label=document.createElement('small');label.textContent=camera.name;const img=document.createElement('img');img.alt=`Camera ${camera.name}`;img.src=`/api/sessions/${state.session.id}/cameras/${camera.index}?access_key=${localStorage.getItem('v4_access_key')||''}`;list.append(label,img)}}
 function renderMapping(){
   const area=$('label-mapping');area.replaceChildren();area.hidden=!state.session;if(!state.session)return;
   const spec=state.models?.find(item=>item.id===$('model').value);
@@ -348,3 +357,109 @@ function renderEvaluation(report){
 }
 $('btn-apply-recommendation').onclick=()=>{const best=state.evaluation?.recommendation;if(!best)return;$('model').value=best.model_id;$('detect-profile').value=best.profile;renderMapping();updateProfileUI();saveDetectorPreferences();message('Đã lưu cấu hình đề xuất cho bài. Bấm Auto detect để dùng trên frame mới.')};
 $('btn-input-check').onclick=async()=>{if(!state.session)return;try{const report=await api(`/api/sessions/${state.session.id}/input-diagnostics`);$('input-diagnostics').textContent=report.summary}catch(error){fail(error)}};
+
+function showAccessModal(force = false) {
+  const modal = $('access-modal');
+  if (!modal) return;
+  const lastActive = parseInt(localStorage.getItem('v4_access_time') || '0', 10);
+  const now = Date.now();
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  if (force || !localStorage.getItem('v4_access_key') || (now - lastActive > SEVEN_DAYS)) {
+    modal.style.display = 'flex';
+  } else {
+    localStorage.setItem('v4_access_time', String(now));
+  }
+}
+window.showAccessModal = showAccessModal;
+
+$('btn-submit-key')?.addEventListener('click', async () => {
+  const input = $('access-key-input').value.trim();
+  if (!input) return;
+  localStorage.setItem('v4_access_key', input);
+  try {
+    await api('/api/models'); // Test key
+    localStorage.setItem('v4_access_time', String(Date.now()));
+    $('access-modal').style.display = 'none';
+    $('access-error').style.display = 'none';
+    window.location.reload();
+  } catch (error) {
+    if (error.message.includes('401')) {
+      $('access-error').style.display = 'block';
+      localStorage.removeItem('v4_access_key');
+    }
+  }
+});
+
+// CVAT Auto Fetch Logic
+function initCVAT() {
+  const savedUrl = localStorage.getItem('v4_cvat_url');
+  const savedUser = localStorage.getItem('v4_cvat_user');
+  const savedPass = localStorage.getItem('v4_cvat_pass');
+  if (savedUrl && savedUser && savedPass) {
+    $('cvat-url').value = savedUrl;
+    $('cvat-user').value = savedUser;
+    $('cvat-pass').value = savedPass;
+    $('cvat-login-form').style.display = 'none';
+    $('cvat-job-section').style.display = 'block';
+    $('cvat-current-user').textContent = savedUser;
+    fetchCVATJobs();
+  } else {
+    $('cvat-login-form').style.display = 'block';
+    $('cvat-job-section').style.display = 'none';
+  }
+}
+async function fetchCVATJobs() {
+  const btn = $('btn-fetch-jobs');
+  btn.disabled = true;
+  btn.textContent = 'Đang tải...';
+  try {
+    const data = await api('/api/cvat/jobs', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(credentials())
+    });
+    localStorage.setItem('v4_cvat_url', $('cvat-url').value);
+    localStorage.setItem('v4_cvat_user', $('cvat-user').value);
+    localStorage.setItem('v4_cvat_pass', $('cvat-pass').value);
+    $('cvat-login-form').style.display = 'none';
+    $('cvat-job-section').style.display = 'block';
+    $('cvat-current-user').textContent = $('cvat-user').value;
+    
+    const select = $('cvat-job-select');
+    select.replaceChildren();
+    for (const job of data.jobs) {
+      const option = document.createElement('option');
+      option.value = job.id;
+      option.textContent = `T${job.task_id} · Job ${job.id} (${job.stage})`;
+      select.append(option);
+    }
+    select.onchange = () => { $('cvat-job').value = select.value; };
+    if (data.jobs.length > 0) {
+      select.value = data.jobs[0].id;
+      $('cvat-job').value = data.jobs[0].id;
+    }
+    message(`Đã tải ${data.jobs.length} Job từ CVAT.`);
+  } catch (error) {
+    fail(error);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Kết nối & Tải danh sách Job';
+  }
+}
+$('btn-fetch-jobs')?.addEventListener('click', fetchCVATJobs);
+$('btn-cvat-logout')?.addEventListener('click', () => {
+  localStorage.removeItem('v4_cvat_url');
+  localStorage.removeItem('v4_cvat_user');
+  localStorage.removeItem('v4_cvat_pass');
+  $('cvat-login-form').style.display = 'block';
+  $('cvat-job-section').style.display = 'none';
+  $('cvat-url').value = '';
+  $('cvat-user').value = '';
+  $('cvat-pass').value = '';
+});
+
+// Init on load
+document.addEventListener('DOMContentLoaded', () => {
+  showAccessModal();
+  initCVAT();
+});
